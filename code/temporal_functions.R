@@ -1,6 +1,6 @@
 #' List of functions for analysing outbreaks on temporal vs static networks
 #' @author Rachael Pung
- 
+
 
 #' Generates aggregated and temporal weighted edgelist
 #' @param in_edgelist raw temporal edgelist

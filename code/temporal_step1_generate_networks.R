@@ -3,7 +3,8 @@
 # http://www.math.pitt.edu/~lewicka/Semester_DiscrNetw_14/MNlecture22.pdf
 
 
-set.seed(123) 
+set.seed(123)
+
 
 # load in raw data set
 load("data/el_cruise_1.RData")

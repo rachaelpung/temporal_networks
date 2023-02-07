@@ -18,6 +18,7 @@ endTmp   = as.numeric(as.POSIXct(paste(dateEnd, '08:00:00', sep = ' '), tz = 'Et
 
 duration = endTmp-startTmp
 
+
 # should return NULL
 which(dataContact$START_TIMESTAMP < startTmp)
 which(dataContact$START_TIMESTAMP > endTmp)
