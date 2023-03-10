@@ -154,32 +154,40 @@ pmf_k0_k1 <- function(ct){
 # degree retained distribution 
 pmf_retain <- function(p_k0_retain, p_k0){
   
+  pmf = copy(p_k0_retain)
+  pmf[p_k0, p_k0:=i.P, on=c(k0='k0')]
+  pmf = pmf[!is.na(p_k0)]
   
+  pmf[, p_r:=P*p_k0]
+  pmf = pmf[, sum(p_r), by=.(r)]
+  setnames(pmf, old='V1', new='P')
+  
+  return(pmf)
 }
 
-# 
-pmf_k0_retain_avg <- function(p_k0){
+# XXXX
+pmf_k0_k1_retain_avg <- function(p_k0, n_nodes){
   
-  x = pmf_k0_rand$P
-  len=length(x)
+  max_k0 = max(p_k0$k0)
+  N = n_nodes
   
-  retain_rand = data.table(k0 = rep(1:len, each=len),
-                           k1 = rep(1:len, times=len),
-                           pmf_k0_k1 = x)
-  retain_rand = retain_rand[rep(1:.N, times=len+1)]
-  retain_rand[, r:=rep(0:len, each=len*len)]
-  retain_rand = retain_rand[r<=k0 & r<=k1]
-  retain_rand[, p:=k1/len]
-  setorder(retain_rand, k0,k1,r)
+  pmf = data.table(k0 = rep(1:max_k0, each=max_k0),
+                   k1 = rep(1:max_k0, times=max_k0),
+                   p_k1 = p_k0$P) # cause network in each time step is independent
   
-  retain_rand[, p_r:=choose(k0,r)*(p^r)*((1-p)^(k0-r))]
-  retain_rand[k1<k0, p_r:=p_r/sum(p_r), by=.(k0,k1)]
-  sum(retain_rand$p_r)
+  pmf = pmf[rep(1:.N, times=max_k0+1)]
+  pmf[, r:=rep(0:max_k0, each=max_k0*max_k0)]
+  pmf = pmf[r<=k0 & r<=k1]
+  pmf[, p:=k1/N] # probability of retaining each contact
+  setorder(pmf, k0, k1, r)
   
-  retain_rand[, p_r_combi:=pmf_k0_k1*p_r]
-  sum(retain_rand$p_r_combi)
+  pmf[, p_binom:=choose(k0,r)*(p^r)*((1-p)^(k0-r))]
+  pmf[k1<k0, p_binom:=p_binom/sum(p_binom), by=.(k0,k1)]
+
+  pmf[, P:=p_binom*p_k1]
+  # sum(pmf$p_binom_k1)
   
-  
+  return(pmf)
 }
 
 # base plot
@@ -222,6 +230,62 @@ plot_k <- function(p_k0, p_k0_r, p_k0_k1){
   
 }
 
+
+# base plot
+plot_k_r <- function(p_k0_r_stat, p_k0_r_temp, p_k0_r_rand, p_k0_k1_r_rand_avg){
+  
+  max_k0 = max(p_k0$k0)
+  
+  p_k0_r = data.table(k0=1:max_k0)
+  p_k0_r = p_k0_r[rep(1:.N, each=max_k0+1)]
+  p_k0_r = p_k0_r[,r:=rep(0:max_k0, times=max_k0)]
+  p_k0_r = p_k0_r[k0>=r]
+  p_k0_r = merge(p_k0_r, p_k0_r_stat, by=c('k0','r'), all=T)
+  p_k0_r = merge(p_k0_r, p_k0_r_temp, by=c('k0','r'), all=T)
+  p_k0_r = merge(p_k0_r, p_k0_r_rand, by=c('k0','r'), all=T)
+  
+  p_k0_r_rand_avg = p_k0_k1_r_rand_avg[,sum(P), by=.(k0,r)]
+  p_k0_r = merge(p_k0_r,p_k0_r_rand_avg, by=c('k0','r'), all=T)
+  setnames(p_k0_r, c('k0', 'r', 'N_stat', 'P_stat', 'N_temp', 'P_temp', 'N_rand', 'P_rand', 'P_rand_avg'))
+  
+  p_k0_r[is.na(p_k0_r),] = 0
+  p_k0_r = p_k0_r[k0>=1]
+  
+  plot(p_k0_r[r==0 & k0<=5]$k0,p_k0_r[r==0 & k0<=5]$P_rand_avg, type='l', ylim=c(0,1))
+  lines(p_k0_r[r==0 & k0<=5]$k0,p_k0_r[r==0 & k0<=5]$P_temp, col='red')
+  lines(p_k0_r[r==0 & k0<=5]$k0,p_k0_r[r==0 & k0<=5]$P_stat, col='blue')
+  
+  plot(p_k0_r[r==k0 & k0<=5]$k0,p_k0_r[r==k0 & k0<=5]$P_rand_avg, type='l', ylim=c(0,1))
+  lines(p_k0_r[r==k0 & k0<=5]$k0,p_k0_r[r==k0 & k0<=5]$P_temp, col='red')
+  lines(p_k0_r[r==k0 & k0<=5]$k0,p_k0_r[r==k0 & k0<=5]$P_stat, col='blue')
+  
+  
+}
+
+plot_r <- function(p_r_stat, p_r_temp, p_r_rand, p_r_rand_avg){
+  
+  max_r = max(p_r_stat$r)
+  
+  p_r = data.table(r=0:max_r)
+  p_r = merge(p_r, p_r_stat, by=c('r'), all=T)
+  p_r = merge(p_r, p_r_temp, by=c('r'), all=T)
+  p_r = merge(p_r, p_r_rand, by=c('r'), all=T)
+  p_r = merge(p_r, p_r_rand_avg, by=c('r'), all=T)
+  setnames(p_r, c('r', 'P_stat', 'P_temp', 'P_rand', 'P_rand_avg'))
+  
+  p_r[is.na(p_r),] = 0
+ 
+  plot(p_r[r<=5]$r,p_r[r<=5]$P_rand_avg, type='l', ylim=c(0,1))
+  lines(p_r[r<=5]$r,p_r[r<=5]$P_temp, col='red')
+  lines(p_r[r<=5]$r,p_r[r<=5]$P_stat, col='blue')
+  
+}
+
+
+
+
+
+
 # generate static network
 network_stat <- function(net, sample_step){
   
@@ -262,7 +326,7 @@ network_rand <- function(net, sample_step){
   net_rand = lapply(1:100, function(x){
     
     rand = copy(graph_net)
-    rand = rewire(rand, keeping_degseq(niter=n_edges))
+    rand = rewire(rand, keeping_degseq(niter=n_edges*100))
     rand = as_edgelist(rand)
     rand = data.table(rand)
     setnames(rand, c('node_i', 'node_j'))

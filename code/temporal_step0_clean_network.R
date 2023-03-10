@@ -234,3 +234,51 @@ setnames(nl, new=c('node', 'department'))
 nl_work_2015 = copy(nl)
 save(nl_work_2015, file='~/Desktop/PhD/modelling COVID-19/temporal networks/data/nl_work_2015.RData')
 
+# networks meta data
+el_meta_cruise = data.table(network = c('cruise_1', 'cruise_2', 'cruise_3', 'cruise_4'),
+                     date_start = c(as.Date('2020-11-06'), as.Date('2020-11-20'), as.Date('2021-01-29'),as.Date('2021-02-17')),
+                     date_end = c(as.Date('2020-11-08'), as.Date('2020-11-22'), as.Date('2021-01-31'),as.Date('2021-02-19')))
+
+el_meta_cruise[, time_start:=as.numeric(as.POSIXct(paste(date_start, 
+                                                  '19:00:00', sep = ' '), 
+                                            tz = 'Etc/GMT-8'))]
+
+el_meta_cruise[, time_end:=as.numeric(as.POSIXct(paste(date_end, 
+                                                  '08:00:00', sep = ' '), 
+                                            tz = 'Etc/GMT-8'))]
+
+el_meta_haslemere = data.table(network = 'haslemere',
+                               date_start = as.Date('2017-10-12'),
+                               date_end = as.Date('2017-10-14'))
+
+el_meta_haslemere[, time_start:=as.numeric(as.POSIXct(paste(date_start, 
+                                                         '07:00:00', sep = ' '), 
+                                                   tz = 'UTC'))]
+
+el_meta_haslemere[, time_end:=as.numeric(as.POSIXct(paste(date_end, 
+                                                       '22:55:00', sep = ' '), 
+                                                 tz = 'UTC'))]
+
+el_meta_repo = data.table(network=c('high_school_2011', 'high_school_2012', 'high_school_2013',
+                                    'hospital', 'malawi', 'work_2013', 'work_2015'),
+                          time_start=c(min(el_high_school_2011$time_start),
+                                       min(el_high_school_2012$time_start),
+                                       min(el_high_school_2013$time_start),
+                                       min(el_hospital$time_start),
+                                       min(el_malawi$time_start),
+                                       min(el_work_2013$time_start),
+                                       min(el_work_2015$time_start)),
+                          time_end=c(max(el_high_school_2011$time_end),
+                                     max(el_high_school_2012$time_end),
+                                     max(el_high_school_2013$time_end),
+                                     max(el_hospital$time_end),
+                                     max(el_malawi$time_end),
+                                     max(el_work_2013$time_end),
+                                     max(el_work_2015$time_end)),
+                          date_start=as.Date(c(NA,'2012-11-19','2012-12-02','2010-12-06',NA,'2013-06-24',NA)),
+                          date_end=as.Date(c(NA,'2012-11-27','2012-12-06','2010-12-10',NA,'2013-07-03',NA)))
+  
+el_meta = rbind(el_meta_cruise, el_meta_haslemere, el_meta_repo)
+el_meta[,type:=c(1,1,1,1,1,2,2,2,2,2,2,2)] # type 1: continuous contact for long periods, 2: multiple breaks in contact
+
+save(el_meta, file='~/Desktop/PhD/modelling COVID-19/temporal networks/data/el_meta.RData')
