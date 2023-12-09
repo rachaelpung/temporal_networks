@@ -10,10 +10,12 @@ network_time <- function(net, net_meta, time_unit, scale){
     net[, step_start:=ceiling(step_start/(time_unit*scale))]
     net[, steps:=floor(duration/(time_unit*scale))]
     net=net[steps>=1]
-    # net[,step_end:=step_start+steps-1]
+    net[, step_end:=step_start+steps-1]
+    
+    steps_length = network_step(net)
     
     steps = net$steps
-    net = net[,c('node_i','node_j','duration','step_start')]
+    net = net[,c('node_i','node_j','duration','step_start', 'day_start')]
     net = net[rep(1:nrow(net), times=steps)]
     
     steps = lapply(1:length(steps), function(x){ seq(0,steps[x]-1,1) })
@@ -27,7 +29,8 @@ network_time <- function(net, net_meta, time_unit, scale){
     net[net,next_contact:=i.contact, on=c(node_i='node_i', node_j='node_j', next_step='step')]
     net[is.na(next_contact), next_contact:=0]
     
-    return(net)
+    return(list(net=net,
+                steps_length=steps_length))
   } else{
     # scale = 60  # 60 for non cruise, 60s interaction in 1hr window; 12 for haslemere
     net[, step_start:=time_start-net_meta$time_start]
@@ -35,10 +38,7 @@ network_time <- function(net, net_meta, time_unit, scale){
     net[, step_end:=time_end-net_meta$time_start]
     net[, step_end:=ceiling(step_end/(time_unit*scale))]
     
-    # for high_school_2012 and high_school_2013
-    net[, date_start:=as.Date(as.POSIXct(time_start, origin="1970-01-01", tz = 'Etc/GMT-7'))]
-    net[, date_end:=as.Date(as.POSIXct(time_end, origin="1970-01-01", tz = 'Etc/GMT-7'))]
-    # if(net[date_start!=date_end,.N] !=0) stop("contact overflowed to next day")
+    steps_length = network_step(net)
     
     # for contacts that last between two intervals, separate them
     net_subset = net[step_start!=step_end]
@@ -77,8 +77,7 @@ network_time <- function(net, net_meta, time_unit, scale){
     rm(net_subset)
     
     net = net[duration>0]
-    net = net[,sum(duration), by=.(node_i, node_j, step_end)] 
-    # net = net[,sum(duration), by=.(node_i, node_j, date_end)] 
+    net = net[,sum(duration), by=.(node_i, node_j, step_end, day_start)] 
     setnames(net, c('step_end', 'V1'), c('step', 'duration'))
     
     ## figure out how to tidy this part on time unit
@@ -89,9 +88,33 @@ network_time <- function(net, net_meta, time_unit, scale){
     net[net,next_contact:=i.contact, on=c(node_i='node_i', node_j='node_j', next_step='step')]
     net[is.na(next_contact), next_contact:=0]
     
-    return(net)
+    
+    return(list(net=net,
+                steps_length=steps_length))
   }
 
+}
+
+# length of time steps in each day
+network_step <- function(net){
+  
+  step_day = data.table(day=c(net$day_start, net$day_end), steps=c(net$step_start, net$step_end))
+  step_day = step_day[, .(min(steps), max(steps)), by=.(day)]
+  
+  setnames(step_day, c('day','min_step','max_step'))
+  
+  
+  setorder(step_day, day)
+  for(i in 1:(nrow(step_day)-1)){
+    
+    if(step_day$min_step[i+1]<=step_day$max_step[i]) step_day$min_step[i+1] = step_day$max_step[i]+1
+  }
+  step_day[, length:=max_step-min_step+1]
+  
+  uni_day = copy(step_day)
+  
+  
+  return(uni_day)
 }
 
 # aggregate contacts by node and time unit
@@ -572,6 +595,60 @@ node_rank <- function(net_p80, ct){
   
 }
 
+
+p80_contact_day <- function(steps_length, kl, n_nodes, type=c('contacts', 'duration')){
+  
+  day_step = lapply(1:nrow(steps_length), function(x){
+    data.table(day=x, step=seq(steps_length$min_step[x], steps_length$max_step[x], 1))
+  })
+  day_step = rbindlist(day_step)
+  
+  net=copy(kl)
+  net[day_step, day:=i.day, on=c(step='step')]
+  
+  if(net[is.na(day) & k0==1,.N]>0) break
+  
+  if(type=='contacts'){ net = net[, sum(k0), by=.(node,day)] }
+  if(type=='duration'){ net = net[, sum(duration), by=.(node,day)] }
+  
+  net = net[!is.na(day)]
+  
+  setorder(net, day, -V1)
+  net[,k0_cum:=cumsum(V1)]
+  net_total = net[, sum(V1), by=.(day)]$V1
+  
+  net_p80_day = lapply(unique(day_step$day), function(y){
+    
+    net_sub = net[day==y]
+    if(length(net_sub[k0_cum<net_total[y]*0.8, which=T])==0){
+      net_row = 0
+    }else{
+      net_row = max(which(net_sub$k0_cum<net_total[y]*0.8))
+    }
+    net_row = net_row + 1
+    
+    # find nodes that account for 80% of the contact episodes or contact duration
+    net_p80 = net_sub[1:net_row, .(day,node)]  
+    
+  })
+  
+  net_p80_day = rbindlist(net_p80_day)
+  
+  return(net_p80_day)
+  
+}
+
+node_rank_day <- function(net_p80_day){
+  net_r80_day = net_p80_day[,.N, by=.(node)]
+  net_r80_day = net_r80_day[, .N, by=.(N)]
+  setnames(net_r80_day, c('day', 'N'))
+  setorder(net_r80_day, -day)
+  
+  return(net_r80_day)
+  
+}
+
+
 # proportion of nodes that consistently appear over time 
 node_sustain <- function(net_p80){
   
@@ -622,5 +699,132 @@ scale_network <- function(p_stat, p_temp, p_rand, p_rand_avg, p_temp_k0_r){
 }
 
 
+contact_type <-function(n, net){
+  
+  if(n %in% c(1:4)){
+    net[nl, type_i:=i.cohort, on=c(node_i='node')] 
+    net[nl, type_j:=i.cohort, on=c(node_j='node')]
+    
+    net[nl, cabin_i:=i.cabin_no, on=c(node_i='node')]
+    net[nl, cabin_j:=i.cabin_no, on=c(node_j='node')]
+  }
+  
+  if(n == 5){
+    net[nl, type_i:=i.household_no, on=c(node_i='node')] 
+    net[nl, type_j:=i.household_no, on=c(node_j='node')]
+  }
+  
+  if(n %in% c(6:8)){
+    net[nl, type_i:=i.class, on=c(node_i='node')] 
+    net[nl, type_j:=i.class, on=c(node_j='node')]
+  }
+  
+  if(n %in% c(9:11)){
+    net[nl, type_i:=i.department, on=c(node_i='node')] 
+    net[nl, type_j:=i.department, on=c(node_j='node')]
+  }
+  
+  
+  # classify type of contact
+  if(n %in% c(1:4)){
+    net[cabin_i==cabin_j, contact_type:=1]
+    net[type_i=='PASSENGER' & type_j=='PASSENGER' & is.na(contact_type), contact_type:=2]
+    net[(type_i=='PASSENGER' & type_j!='PASSENGER') | (type_j=='PASSENGER' & type_i!='PASSENGER') , contact_type:=5]
+    net[type_i==type_j & is.na(contact_type), contact_type:=3]
+    net[type_i!=type_j & is.na(contact_type), contact_type:=4]
+  }
+  
+  if(n == 5){
+    net[type_i==type_j & !is.na(type_i) & !is.na(type_j), contact_type:=1]
+    net[type_i!=type_j & !is.na(type_i) & !is.na(type_j), contact_type:=2]
+    net[is.na(contact_type), contact_type:=3]
+  }
+  
+  if(n %in% c(6:11)){
+    net[type_i==type_j, contact_type:=1]
+    net[type_i!=type_j, contact_type:=2]
+  }
+  
+
+  return(net)
+}
 
 
+retain_prop_contact_type <-function(n, net, nl, r_scale){
+  
+  if(n %in% c(1:4)){
+    net[nl, type_i:=i.cohort, on=c(node_i='node')] 
+    net[nl, type_j:=i.cohort, on=c(node_j='node')]
+    
+    net[nl, cabin_i:=i.cabin_no, on=c(node_i='node')]
+    net[nl, cabin_j:=i.cabin_no, on=c(node_j='node')]
+  }
+  
+  if(n == 5){
+    net[nl, type_i:=i.household_no, on=c(node_i='node')] 
+    net[nl, type_j:=i.household_no, on=c(node_j='node')]
+  }
+  
+  if(n %in% c(6:8)){
+    net[nl, type_i:=i.class, on=c(node_i='node')] 
+    net[nl, type_j:=i.class, on=c(node_j='node')]
+  }
+  
+  if(n %in% c(9:11)){
+    net[nl, type_i:=i.department, on=c(node_i='node')] 
+    net[nl, type_j:=i.department, on=c(node_j='node')]
+  }
+  
+  
+  # classify type of contact
+  if(n %in% c(1:4)){
+    net[cabin_i==cabin_j, contact_type:=1]
+    net[type_i=='PASSENGER' & type_j=='PASSENGER' & is.na(contact_type), contact_type:=2]
+    net[(type_i=='PASSENGER' & type_j!='PASSENGER') | (type_j=='PASSENGER' & type_i!='PASSENGER') , contact_type:=5]
+    net[type_i==type_j & is.na(contact_type), contact_type:=3]
+    net[type_i!=type_j & is.na(contact_type), contact_type:=4]
+  }
+  
+  if(n == 5){
+    net[type_i==type_j & !is.na(type_i) & !is.na(type_j), contact_type:=1]
+    net[type_i!=type_j & !is.na(type_i) & !is.na(type_j), contact_type:=2]
+    net[is.na(contact_type), contact_type:=3]
+  }
+  
+  if(n %in% c(6:11)){
+    net[type_i==type_j, contact_type:=1]
+    net[type_i!=type_j, contact_type:=2]
+  }
+  
+  
+  k_type_next_step = data.table(step=rep(unique(net$step), each=2*uniqueN(net$contact_type)),
+                                next_contact=c(0,1),
+                                contact_type=rep(unique(net$contact_type), each=2))
+  k_type_next_step = merge(k_type_next_step, net[,.N, by=.(step, next_contact, contact_type)], by=c('step', 'next_contact', 'contact_type'), all.x=T)
+  setorder(k_type_next_step, step, contact_type, next_contact)
+  k_type_next_step[is.na(N), N:=0]
+  k_type_next_step[, P_retain:=N/sum(N), by=.(step, contact_type)]
+  k_type_next_step[is.na(P_retain), P_retain:=0]
+
+  # k_type_next_step = net[,.N, by=.(step, next_contact, contact_type)]
+  # setorder(k_type_next_step, step, contact_type, next_contact)
+  # k_type_next_step[, P_retain:=N/sum(N), by=.(step, contact_type)]
+  # 
+  # k_type_step = net[,.N, by=.(step, contact_type)]
+  # setorder(k_type_step, step, contact_type)
+  # k_type_step[, P_type:=N/sum(N), by=.(step)]
+  
+  k_type_step = data.table(step=rep(unique(net$step), each=uniqueN(net$contact_type)),
+                           contact_type=unique(net$contact_type))
+  k_type_step = merge(k_type_step, net[,.N, by=.(step, contact_type)], by=c('step', 'contact_type'), all.x=T)
+  k_type_step[is.na(N), N:=0]
+  k_type_step[, P_type:=N/sum(N), by=.(step)]
+ 
+  k_type_next_step[k_type_step, P_type:=i.P_type, on=c(step='step', contact_type='contact_type')]
+  k_type_next_step[next_contact==1, P_total:=P_type*P_retain]
+  k_type_next_step[next_contact==1, P_total:=P_total/sum(P_total, na.rm=T), by=.(step)]
+
+  k_type_next_step[r_scale, r:=i.scale_norm2, on=c(step='step')]
+  
+  return(k_type_next_step)
+}
