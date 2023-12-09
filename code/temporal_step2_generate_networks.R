@@ -3,8 +3,11 @@ source("code/temporal_functions.R")
 
 # load param, edge list and meta data
 param = fread("data/param.csv")
-n = 6; el_name = param[n,net]
+n = 11; el_name = param[n,net]
 el = get(load(paste("data/el_", el_name, ".RData", sep=''))) 
+
+el$node_i= as.character(el$node_i)
+el$node_j= as.character(el$node_j)
 
 load("data/el_meta.RData")
 row = which(el_meta$network==el_name)
@@ -17,11 +20,6 @@ row = which(el_meta$network==el_name)
 # 
 # # find dups
 # which(duplicated(el)==T)
-# 
-# 
-# el$node_i= as.character(el$node_i)
-# el$node_j= as.character(el$node_j)
-
 
 # edge list in respective time unit 
 el = network_time(el, el_meta[row,], 
@@ -31,11 +29,6 @@ el = network_time(el, el_meta[row,],
 # time steps in each day
 steps_length = el$steps_length
 el = el$net
-
-# load('output/results/20230403/net_param_06_high_school_2011.RData')
-# net$steps_length=steps_length
-# save(net,file= paste0("output/net_param_", n, "_",el_name,".rdata"))
-
 
 # aggregate contacts by node and time unit
 kl = contact_time(el)
@@ -123,7 +116,4 @@ stopCluster(cl)
 net = list(el=el, kl=kl, steps_length=steps_length, max_step=max_step, n_nodes_total=n_nodes_total)
 save(net,file= paste0("output/net_param_", n, "_",el_name,".rdata"))
 
-# # plot single run
-# plot_k_r(p_k0_r_stat, p_k0_r_temp, p_k0_r_rand[[1]], p_k0_k1_r_rand_avg)
-# plot_r(p_r_stat, p_r_temp, p_r_rand[[1]], p_r_rand_avg)
 
