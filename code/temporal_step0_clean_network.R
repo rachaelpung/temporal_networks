@@ -170,11 +170,23 @@ save(nl_haslemere, file='~/Desktop/PhD/modelling COVID-19/temporal networks/data
 # el.malawi, 14 days
 load("~/Desktop/PhD/modelling COVID-19/generation interval/data/networks/004_el.work.15.RData")
 
-el=copy(el.hospital)
+el=copy(el.work.15) # el.high.school.11, el.high.school.12, el.high.school.13, el.hospital, el.work.13, el.work.15 
 el=data.table(el)
-setnames(el, new=c('time_start', 'day_start', 'node_i', 'node_j'))
+
+el[, day:=as.Date(as.POSIXct(time, origin="1970-01-01"))]
+el[, day:=as.numeric(day-min(day)+1)]
+
+
+# colnames
+setnames(el, old=c('time', 'id.x', 'id.y', 'day'), new=c('time_start', 'node_i', 'node_j', 'day_start')) 
+# el.high.school.11, el.high.school.12, el.high.school.13, el.hospital
+
+
 el=el[,c('node_i', 'node_j','time_start','day_start')]      
 setorder(el, node_i, node_j, time_start, day_start)
+
+
+
 
 el[,time_end:=time_start]
 el[,time_start:=time_start-20]
@@ -211,8 +223,8 @@ el_final[, duration:=time_end-time_start]
 el_final=el_final[,c('node_i','node_j','time_start','time_end','duration','day_start','day_end')]
 setorder(el_final, node_i, node_j, time_start)
 
-el_malawi = copy(el_final)
-save(el_malawi, file='~/Desktop/PhD/modelling COVID-19/temporal networks/data/el_malawi.RData')
+el_work_2015 = copy(el_final)
+save(el_work_2015, file='~/Desktop/PhD/modelling COVID-19/temporal networks/data/el_work_2015.RData')
 
 # el.work.15.colocate, 14 days
 # el.work.13.colocate, 14 days
