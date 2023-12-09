@@ -217,94 +217,6 @@ pmf_k0_k1_retain_avg <- function(p_k0, n_nodes){
   return(pmf)
 }
 
-# base plot
-plot_k <- function(p_k0, p_k0_r, p_k0_k1){
-  
-  colline = c('black','red','blue','green','yellow','orange','pink','turquoise')
-  collegend = c("1 contact", "2 contact", '3 contact', '4 contact',
-                '5 contact','6 contact','7 contact', '8 contact')
-  
-  plot(p_k0$k0, p_k0$P, type='l', xlab='no. of contacts in one time unit', ylab='prop')
-  
-  for(i in 1:8){
-    
-    if(i==1) plot(p_k0_r[k0==i]$r, p_k0_r[k0==i]$P, type='l', xlim=c(0,8), ylim=c(0,1),
-                  xlab='no. of contacts retained in next time unit', ylab='prop', col=colline[i])  
-    if(i!=1) lines(p_k0_r[k0==i]$r, p_k0_r[k0==i]$P, col=colline[i])
-    if(i==8) legend("topright", legend=collegend, col=colline, lty=1, cex=0.6)
-    
-    
-  }
-  
-  for(i in 1:8){
-    
-    if(i==1) plot(p_k0_k1[k0==i]$k1, p_k0_k1[k0==i]$P, type='l', xlim=c(0,8), ylim=c(0,1),
-                  xlab='no. of contacts in next time unit', ylab='prop', col=colline[i])  
-    if(i!=1) lines(p_k0_k1[k0==i]$k1, p_k0_k1[k0==i]$P, col=colline[i])
-    if(i==8) legend("topright", legend=collegend, col=colline, lty=1, cex=0.6)
-    
-    
-  }
-  
-  
-  # compare with poisson distribution 
-  p_k0_k1[, P_cum:=cumsum(P), by=.(k0)]
-  p_pois = sapply(0:13, function(x){ cumsum(dpois(0:50, x))[x+1] }) # cum prob of less than equal to k0
-  
-  plot(p_k0_k1[k0==k1]$k0, p_k0_k1[k0==k1]$P_cum, xlab='no of contact in current unit', 
-       ylab='prop', ylim=c(0,1), type='l')
-  lines(0:13, p_pois, col='red')
-  
-}
-
-plot_k_r <- function(p_k0_r_stat, p_k0_r_temp, p_k0_r_rand, p_k0_k1_r_rand_avg){
-  
-  max_k0 = max(p_k0$k0)
-  
-  p_k0_r = data.table(k0=1:max_k0)
-  p_k0_r = p_k0_r[rep(1:.N, each=max_k0+1)]
-  p_k0_r = p_k0_r[,r:=rep(0:max_k0, times=max_k0)]
-  p_k0_r = p_k0_r[k0>=r]
-  p_k0_r = merge(p_k0_r, p_k0_r_stat, by=c('k0','r'), all=T)
-  p_k0_r = merge(p_k0_r, p_k0_r_temp, by=c('k0','r'), all=T)
-  p_k0_r = merge(p_k0_r, p_k0_r_rand, by=c('k0','r'), all=T)
-  
-  p_k0_r_rand_avg = p_k0_k1_r_rand_avg[,sum(P), by=.(k0,r)]
-  p_k0_r = merge(p_k0_r,p_k0_r_rand_avg, by=c('k0','r'), all=T)
-  setnames(p_k0_r, c('k0', 'r', 'N_stat', 'P_stat', 'N_temp', 'P_temp', 'N_rand', 'P_rand', 'P_rand_avg'))
-  
-  p_k0_r[is.na(p_k0_r),] = 0
-  p_k0_r = p_k0_r[k0>=1]
-  
-  plot(p_k0_r[r==0 & k0<=5]$k0,p_k0_r[r==0 & k0<=5]$P_rand_avg, type='l', ylim=c(0,1))
-  lines(p_k0_r[r==0 & k0<=5]$k0,p_k0_r[r==0 & k0<=5]$P_temp, col='red')
-  lines(p_k0_r[r==0 & k0<=5]$k0,p_k0_r[r==0 & k0<=5]$P_stat, col='blue')
-  
-  plot(p_k0_r[r==k0 & k0<=5]$k0,p_k0_r[r==k0 & k0<=5]$P_rand_avg, type='l', ylim=c(0,1))
-  lines(p_k0_r[r==k0 & k0<=5]$k0,p_k0_r[r==k0 & k0<=5]$P_temp, col='red')
-  lines(p_k0_r[r==k0 & k0<=5]$k0,p_k0_r[r==k0 & k0<=5]$P_stat, col='blue')
-  
-  
-}
-
-plot_r <- function(p_r_stat, p_r_temp, p_r_rand, p_r_rand_avg){
-  
-  max_r = max(p_r_stat$r)
-  
-  p_r = data.table(r=0:max_r)
-  p_r = merge(p_r, p_r_stat, by=c('r'), all=T)
-  p_r = merge(p_r, p_r_temp, by=c('r'), all=T)
-  p_r = merge(p_r, p_r_rand, by=c('r'), all=T)
-  p_r = merge(p_r, p_r_rand_avg, by=c('r'), all=T)
-  setnames(p_r, c('r', 'P_stat', 'P_temp', 'P_rand', 'P_rand_avg'))
-  
-  p_r[is.na(p_r),] = 0
- 
-  plot(p_r[r<=5]$r,p_r[r<=5]$P_rand_avg, type='l', ylim=c(0,1))
-  lines(p_r[r<=5]$r,p_r[r<=5]$P_temp, col='red')
-  lines(p_r[r<=5]$r,p_r[r<=5]$P_stat, col='blue')
-  
-}
 
 # generate static network
 network_stat <- function(net, sample_step){
@@ -327,7 +239,6 @@ network_temp <- function(net, sample_step){
   
   net[, next_step:=step+1]
   net[net, next_contact:=i.contact, on=c(node_i='node_i', node_j='node_j', next_step='step')]
-  # net = net[step==sample_step]
   net[step==sample_step & is.na(next_contact), next_contact:=0]
   
   return(net)
@@ -339,7 +250,6 @@ network_rand <- function(net, sample_step){
   net = net[step==sample_step,c('node_i','node_j','duration','step','contact')]
   
   graph_net = graph_from_data_frame(net, directed=T)
-  # graph_net = set_edge_attr(graph_net, 'weight', value=net$duration)
   n_edges = length(E(graph_net))
   n_nodes = length(V(graph_net))
   
@@ -359,11 +269,9 @@ network_rand <- function(net, sample_step){
     
     rand[, next_step:=step+1]
     rand[rand, next_contact:=i.contact, on=c(node_i='node_i', node_j='node_j', next_step='step')]
-    # rand = rand[step==sample_step]
     rand[step==sample_step & is.na(next_contact), next_contact:=0]
     
-    # rand[, set:=x]
-    
+
   })
   
   return(net_rand)
@@ -416,18 +324,6 @@ check_deg_dist <- function(out){
     temp_diff[!is.na(P2), diff:=P-P2]
     temp_diff[, step:=x]
     temp_diff[, net_type:='temp']
-    
-    # rand_diff = lapply(1:100, function(y){
-    # 
-    #   rand_set_diff = copy(out[[x]][['p_k0_stat']])
-    #   rand_set_diff[out[[x]][['p_k0_rand']][[y]], P2:=i.P, on=c(k0='k0')]
-    #   rand_set_diff[!is.na(P2), diff:=P-P2]
-    #   rand_set_diff[, step:=x]
-    #   rand_set_diff[, net_type:='rand']
-    #   rand_set_diff[, set:=y]
-    # 
-    #   return(rand_set_diff)
-    # })
   
     return(temp_diff)   
   })
@@ -805,14 +701,6 @@ retain_prop_contact_type <-function(n, net, nl, r_scale){
   k_type_next_step[is.na(N), N:=0]
   k_type_next_step[, P_retain:=N/sum(N), by=.(step, contact_type)]
   k_type_next_step[is.na(P_retain), P_retain:=0]
-
-  # k_type_next_step = net[,.N, by=.(step, next_contact, contact_type)]
-  # setorder(k_type_next_step, step, contact_type, next_contact)
-  # k_type_next_step[, P_retain:=N/sum(N), by=.(step, contact_type)]
-  # 
-  # k_type_step = net[,.N, by=.(step, contact_type)]
-  # setorder(k_type_step, step, contact_type)
-  # k_type_step[, P_type:=N/sum(N), by=.(step)]
   
   k_type_step = data.table(step=rep(unique(net$step), each=uniqueN(net$contact_type)),
                            contact_type=unique(net$contact_type))
