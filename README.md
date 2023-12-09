@@ -1,10 +1,10 @@
 # Temporal contact patterns and the implications for predicting superspreaders and planning of targeted outbreak control 
 
-This repository contains code and data to analyse the epidemiological features of 11 real-world temporal networks by estimating (i) the reliability to predict 'superspreaders', (ii) the type of contacts that tend to be retained over time, (iii) the correlation of contacts over the days. Preprint can be found [here] (https://www.medrxiv.org/content/10.1101/2023.11.22.23298919v1)
+This repository contains code and data to analyse the epidemiological features of 11 real-world temporal networks by estimating (i) the reliability to predict 'superspreaders', (ii) the type of contacts that tend to be retained over time, (iii) the correlation of contacts over the days. Preprint can be found [here](https://www.medrxiv.org/content/10.1101/2023.11.22.23298919v1)
 
 ## Quick start guide
 ### Data and code for time varying contact pattern
-Edgelist and list of nodes for high resolution contact data from four [cruises] (https://www.nature.com/articles/s41467-022-29522-y), a [community in the UK] (https://doi.org/10.1101/479154), three [high schools] (https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0107878), a [hospital] (https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0073970), two [workplaces] (https://www.cambridge.org/core/journals/network-science/article/abs/data-on-facetoface-contacts-in-an-office-building-suggest-a-lowcost-vaccination-strategy-based-on-community-linkers/18AB49AB4F2AEA33CE7501F06ADBC8E8) were processed and can be found in:
+Edgelist and list of nodes for high resolution contact data from four [cruises](https://www.nature.com/articles/s41467-022-29522-y), a [community in the UK](https://doi.org/10.1101/479154), three [high schools](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0107878), a [hospital](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0073970), two [workplaces](https://www.cambridge.org/core/journals/network-science/article/abs/data-on-facetoface-contacts-in-an-office-building-suggest-a-lowcost-vaccination-strategy-based-on-community-linkers/18AB49AB4F2AEA33CE7501F06ADBC8E8) were processed and can be found in:
 
 > data/el_network_name.RData<br/>
 > data/nl_network_name.RData<br/>
