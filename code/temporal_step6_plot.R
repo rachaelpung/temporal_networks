@@ -1,6 +1,6 @@
 source('code/temporal_library.R')
 source('code/temporal_colour.R')
-source('code/temporal_step4_load_results.R')
+source('code/temporal_step5_load_results.R')
 
 # p_k0
 paneller=function(row = 1,column=1)
@@ -108,6 +108,115 @@ popViewport()
 popViewport()
 dev.off()
 
+# p_k0_log
+paneller=function(row = 1,column=1)
+{
+  
+  xlm=log(c(0.1,100),10)
+  ylm=log(c(1,10000),10)
+  
+  innermargins = c(2,2,2,2)
+  
+  pushViewport(viewport(layout.pos.col=column,layout.pos.row=row))
+  pushViewport(plotViewport(innermargins,xscale=xlm,yscale=ylm))
+  
+  index = column + 4*(row-1)
+  max_step = net[[index]]$max_step
+  if(index %in% c(1:4)) col_line = col_hue_lancet[1]
+  if(index %in% c(5)) col_line = col_hue_lancet[2]
+  if(index %in% c(6:8)) col_line = col_hue_lancet[3]
+  if(index %in% c(9)) col_line = col_hue_lancet[4]
+  if(index %in% c(10:11)) col_line = col_hue_lancet[5]
+  
+  # plot every single distribution of k1|k0
+  for(s in 1:max_step){
+    
+    data_temp = copy(results[[index]]$p_k0_temp[step==s]) # & k0!=0
+    if(data_temp[,.N]==0) next
+    
+    if(data_temp[,.N]>=2 & data_temp[,sum(N)]>=10) {
+      data_temp[k0==0, k0:=0.1]
+      grid.lines(log(data_temp[k0<=10]$k0,10), log(data_temp[k0<=10]$N, 10), default.units = 'native',gp=gpar(col='gray90',lwd=0.75))
+    }
+  }
+  
+  data_temp = copy(results[[index]]$p_k0_temp) 
+  keep_step = data_temp[,.(.N, sum(N)), by=.(step)]
+  keep_step = keep_step[N>=2 & V2>=10, step]
+  if(length(keep_step)==0) next
+  data_temp = data_temp[step %in% keep_step]
+  
+  n_step = uniqueN(data_temp$step)
+  data_temp = data_temp[, median(N), by=.(k0)]
+  setorder(data_temp, k0)
+  data_temp[k0==0, k0:=0.1]
+  grid.lines(log(data_temp[k0<=10]$k0,10), log(data_temp[k0<=10]$V1,10), default.units = 'native',gp=gpar(col=col_line,lwd=2))
+  
+
+  
+  
+  popViewport()
+  pushViewport(plotViewport(innermargins,xscale=xlm,yscale=ylm))
+  
+  # axis
+  grid.xaxis(at=log(c(0.1,1,10,100),10),label=c(0,1,10,10^2))
+  grid.yaxis(at=log(c(1,10,100,1000,10000),10),label=expression(1,10,10^2,10^3,10^4))
+  
+  
+  # labels
+  grid.text('Counts',x=unit(-3,'lines'),rot=90)
+  grid.text(bquote(k[t]),y=unit(-2.5,'lines'))
+  
+  if(row == 1 & column == 1) grid.text('A',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 1 & column == 2) grid.text('B',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 1 & column == 3) grid.text('C',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 1 & column == 4) grid.text('D',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  
+  if(row == 2 & column == 1) grid.text('E',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 2 & column == 2) grid.text('F',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 2 & column == 3) grid.text('G',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 2 & column == 4) grid.text('H',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  
+  if(row == 3 & column == 1) grid.text('I',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 3 & column == 2) grid.text('J',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 3 & column == 3) grid.text('K',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 3 & column == 4) grid.text('L',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  
+  # legend
+  grid.lines(c(1.2,1.35), c(3.8,3.8), default.units = 'native', gp=gpar(col=col_line,lwd=2))
+  
+  if(index %in% c(1:4)) grid.text('Cruise', 1.4, 3.8, default.units = 'native', just='left', gp=gpar(fontsize=unit(6,'pt')))
+  if(index %in% c(5)) grid.text('Community', 1.4, 3.8, default.units = 'native', just='left', gp=gpar(fontsize=unit(6,'pt')))
+  if(index %in% c(6:8)) grid.text('School', 1.4, 3.8, default.units = 'native', just='left', gp=gpar(fontsize=unit(6,'pt')))
+  if(index %in% c(9)) grid.text('Hospital', 1.4, 3.8, default.units = 'native', just='left', gp=gpar(fontsize=unit(6,'pt')))
+  if(index %in% c(10:11)) grid.text('Work', 1.4, 3.8, default.units = 'native', just='left', gp=gpar(fontsize=unit(6,'pt')))
+  
+  
+  grid.lines(c(0,1,1,0,0),c(0,0,1,1,0))
+  
+  popViewport()
+  
+  
+  pushViewport(plotViewport(innermargins,xscale=xlm,yscale=ylm))
+  
+  
+  popViewport()
+  popViewport()
+  
+}
+
+
+png('figure/p_k0_log.png',height=8*3,width=8*4,units='cm',res=300,pointsize=10)
+pushViewport(plotViewport(c(2,2,1,1)))
+pushViewport(viewport(layout=grid.layout(nrow=3,ncol=4)))
+
+paneller(1,1); paneller(1,2); paneller(1,3); paneller(1,4)
+paneller(2,1); paneller(2,2); paneller(2,3); paneller(2,4)
+paneller(3,1); paneller(3,2); paneller(3,3)
+
+popViewport()
+popViewport()
+dev.off()
 
 # p_k0_k1
 paneller=function(row = 1,column=1)
@@ -590,7 +699,7 @@ popViewport()
 popViewport()
 dev.off()
 
-
+# correlation
 paneller=function(row = 1,column=1)
 {
   n = column + (row-1)*4
@@ -1534,6 +1643,172 @@ paneller(1,2)
 
 
 # grid.text('Proportion of nodes',y=unit(-1,'lines'))
+
+
+popViewport()
+popViewport()
+dev.off()
+
+rm(paneller)
+
+
+
+# no. of contacts episodes vs duration of contacts
+paneller=function(row = 1,column=1)
+{
+  n = column + (row-1)*4
+  index_row = net[[n]]$el$duration[2:net[[n]]$el[,.N]] - net[[n]]$el$duration[1:net[[n]]$el[,.N]-1] 
+  index_row = which(index_row!=0)
+  contact_epi = contact_dur = copy(net[[n]]$el[index_row,])
+  contact_epi = contact_epi[,.N, by=node_i]
+  contact_dur = contact_dur[,sum(duration), by=node_i]
+  contact = data.table(node = contact_epi$N, episode = contact_epi$N, duration=contact_dur$V1)
+  
+  
+  if(row==1 & column==1){xlm=c(0,300); ylm=c(0,3*24*60*60)}
+  if(row==1 & column==2){xlm=c(0,200); ylm=c(0,3*24*60*60)}
+  if(row==1 & column==3){xlm=c(0,100); ylm=c(0,3*24*60*60)}
+  if(row==1 & column==4){xlm=c(0,150); ylm=c(0,3*24*60*60)}
+  if(row==2 & column==1){xlm=c(0,150); ylm=c(0,24*60*60)}
+  if(row==2 & column==2){xlm=c(0,300); ylm=c(0,5*60*60)}
+  if(row==2 & column==3){xlm=c(0,500); ylm=c(0,9*60*60)}
+  if(row==2 & column==4){xlm=c(0,1000); ylm=c(0,18*60*60)}
+  if(row==3 & column==1){xlm=c(0,1000); ylm=c(0,18*60*60)}
+  if(row==3 & column==2){xlm=c(0,200); ylm=c(0,5*60*60)}
+  if(row==3 & column==3){xlm=c(0,600); ylm=c(0,10*60*60)}
+  
+  innermargins = c(2,2,2,2)
+  
+  pushViewport(viewport(layout.pos.col=column,layout.pos.row=row))
+  pushViewport(plotViewport(innermargins,xscale=xlm,yscale=ylm))
+  
+  # col line
+  if(n %in% c(1:4)) {col_line=col_hue_lancet[1]}
+  if(n==5) {col_line=col_hue_lancet[2]}
+  if(n %in% c(6:8)) {col_line=col_hue_lancet[3]}
+  if(n==9) {col_line=col_hue_lancet[4]}
+  if(n %in% c(10,11)) {col_line=col_hue_lancet[5]}
+  
+  grid.points(contact[duration<ylm[2] & episode<xlm[2]]$episode, contact[duration<ylm[2] & episode<xlm[2]]$duration, 
+              pch=16, default.units = 'native',gp=gpar(col=col_line,fill=col_line, cex=0.3))
+  
+  med_line = data.table(xx=xlm[1]:xlm[2], yy=(xlm[1]:xlm[2])*param[n,]$time_unit)
+  
+  # grid.lines(med_line[xx<xlm[2] & yy<ylm[2]]$xx, med_line[xx<xlm[2] & yy<ylm[2]]$yy, default.units = 'native',gp=gpar(col='gray90', lty='dashed'))
+  
+  
+  
+  popViewport()
+  pushViewport(plotViewport(innermargins,xscale=xlm,yscale=ylm))
+  
+  # axis
+  if(row==1 ){
+    if(column==1) grid.xaxis(at=seq(0,300,100),label=seq(0,300,100))
+    if(column==2) grid.xaxis(at=seq(0,200,50),label=seq(0,200,50))
+    if(column==3) grid.xaxis(at=seq(0,100,25),label=seq(0,100,25))
+    if(column==4) grid.xaxis(at=seq(0,150,50),label=seq(0,150,50))
+    grid.yaxis(at=seq(0,3*24*60*60,24*60*60),label=seq(0,3,1))
+    grid.text('Cumulative contact duration (day)',x=unit(-3,'lines'),rot=90)
+  } 
+
+  if(row==2 & column==1){
+    grid.xaxis(at=seq(0,150,50),label=seq(0,150,50))
+    grid.yaxis(at=seq(0,24*60*60,6*60*60),label=seq(0,24,6))
+    grid.text('Cumulative contact duration (hr)',x=unit(-3,'lines'),rot=90)
+  } 
+  if((row==2 & column==2)){
+    grid.xaxis(at=seq(0,300,100),label=seq(0,300,100))
+    grid.yaxis(at=seq(0,5*60*60,60*60),label=seq(0,5,1))
+    grid.text('Cumulative contact duration (hr)',x=unit(-3,'lines'),rot=90)
+  } 
+  if(row==2 & column==3){
+    grid.xaxis(at=seq(0,500,100),label=seq(0,500,100))
+    grid.yaxis(at=seq(0,9*60*60,3*60*60),label=seq(0,9,3))
+    grid.text('Cumulative contact duration (hr)',x=unit(-3,'lines'),rot=90)
+  } 
+  if(row==2 & column==4){
+    grid.xaxis(at=seq(0,1000,250),label=seq(0,1000,250))
+    grid.yaxis(at=seq(0,18*60*60,6*60*60),label=seq(0,18,6))
+    grid.text('Cumulative contact duration (hr)',x=unit(-3,'lines'),rot=90)
+  } 
+  if(row==3 & column==1){
+    grid.xaxis(at=seq(0,1000,250),label=seq(0,1000,250))
+    grid.yaxis(at=seq(0,18*60*60,6*60*60),label=seq(0,18,6))
+    grid.text('Cumulative contact duration (hr)',x=unit(-3,'lines'),rot=90)
+  } 
+  if(row==3 & column==2){
+    grid.xaxis(at=seq(0,200,50),label=seq(0,200,50))
+    grid.yaxis(at=seq(0,5*60*60,1*60*60),label=seq(0,5,1))
+    grid.text('Cumulative contact duration (hr)',x=unit(-3,'lines'),rot=90)
+  } 
+  if(row==3 & column==3){
+    grid.xaxis(at=seq(0,600,200),label=seq(0,600,200))
+    grid.yaxis(at=seq(0,10*60*60,2*60*60),label=seq(0,10,2))
+    grid.text('Cumulative contact duration (hr)',x=unit(-3,'lines'),rot=90)
+  } 
+ 
+
+  # labels
+  grid.text('Contact episodes per node',y=unit(-2.5,'lines'))
+  
+  n_label = c('Cruise 1', 'Cruise 2', 'Cruise 3', 'Cruise 4', 'Community', 
+              'High school 1', 'High school 2', 'High school 3', 
+              'Hospital', 'Workplace 1', 'Workplace 2')
+  
+  grid.text(n_label[n], x=unit(17,'lines'), y=unit(16.5,'lines'), just='right', gp=gpar(fontsize=unit(8,'pt')))
+  
+  if(n %in% c(1:4)) {col_line=col_hue_lancet[1]}
+  if(n==5) {col_line=col_hue_lancet[2]}
+  if(n %in% c(6:8)) {col_line=col_hue_lancet[3]}
+  if(n==9) {col_line=col_hue_lancet[4]}
+  if(n %in% c(10,11)) {col_line=col_hue_lancet[5]}
+  
+  
+  if(row == 1 & column == 1) grid.text('A',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 1 & column == 2) grid.text('B',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 1 & column == 3) grid.text('C',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 1 & column == 4) grid.text('D',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  
+  if(row == 2 & column == 1) grid.text('E',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 2 & column == 2) grid.text('F',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 2 & column == 3) grid.text('G',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 2 & column == 4) grid.text('H',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  
+  if(row == 3 & column == 1) grid.text('I',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 3 & column == 2) grid.text('J',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  if(row == 3 & column == 3) grid.text('K',x=unit(-2.5,'lines'),y=unit(11.5,'lines'),gp=gpar(fontsize=unit(12,'pt')))
+  
+  grid.lines(c(0,1,1,0,0),c(0,0,1,1,0))
+  
+  popViewport()
+  
+  
+  pushViewport(plotViewport(innermargins,xscale=xlm,yscale=ylm))
+  
+  
+  popViewport()
+  popViewport()
+  
+}
+
+
+png('figure/contact_episode_cum_duration_no_midline_supp.png',height=8*3,width=8*4,units='cm',res=300,pointsize=10)
+pushViewport(plotViewport(c(2,2,1,1)))
+pushViewport(viewport(layout=grid.layout(nrow=3,ncol=4)))
+
+paneller(1,1)
+paneller(1,2)
+paneller(1,3)
+paneller(1,4)
+
+paneller(2,1)
+paneller(2,2)
+paneller(2,3)
+paneller(2,4)
+
+paneller(3,1)
+paneller(3,2)
+paneller(3,3)
 
 
 popViewport()
